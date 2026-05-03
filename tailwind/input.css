@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+
+@source "../templates/**/*.html";
+@source "../static/**/*.js";
+
+@layer base {
+  button,
+  [type="button"],
+  [type="submit"],
+  select,
+  a {
+    @apply cursor-pointer;
+  }
+}

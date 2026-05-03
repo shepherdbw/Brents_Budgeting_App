@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Local runtime data
+.csv_import_previews/
+portable_instance.json
+*.sqlite-*
+*.db
+budget.*.sqlite
+budget.*.sql
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local tools, editor bundles, and shortcuts
+Notepad++/
+sqlite_recovery_tools/
+tools/*.exe
+*.lnk
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.env

@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mx-auto flex w-full justify-center">
+  <div class="w-full max-w-5xl">
+    <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+      <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Settings
+          </p>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">Budgeting Style</h2>
+          <p class="mt-2 text-sm text-slate-600">
+            Choose how strict the app should be when envelopes are low.
+          </p>
+        </div>
+      </div>
+
+      <form id="settings-form" method="post" class="space-y-5">
+        <div class="space-y-4">
+          <div class="relative rounded-3xl border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
+            <div class="group absolute left-4 top-4">
+              <button
+                type="button"
+                tabindex="-1"
+                aria-label="How strict budgeting works"
+                class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-500 shadow-sm"
+              >
+                ?
+              </button>
+              <div class="pointer-events-none absolute left-8 top-0 z-10 hidden w-72 rounded-2xl bg-slate-900 px-3 py-2 text-xs leading-5 text-white shadow-xl group-hover:block">
+                When this is on, expenses cannot be saved if they would push the selected envelope below zero. Recurring deposits will still work, but the app will not create negative recurring-due balances automatically.
+              </div>
+            </div>
+
+            <div class="flex min-h-[4rem] items-center justify-between gap-4 pl-8">
+              <div class="pr-2">
+                <p class="text-sm font-semibold text-slate-900">
+                  Prevent negative envelope balances
+                </p>
+                <p class="mt-1 text-xs font-medium uppercase tracking-wide {% if form.prevent_negative_envelopes %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                  {% if form.prevent_negative_envelopes %}On{% else %}Off{% endif %}
+                </p>
+              </div>
+
+              <label class="inline-flex cursor-pointer items-center">
+                <input
+                  id="prevent_negative_envelopes"
+                  name="prevent_negative_envelopes"
+                  type="checkbox"
+                  value="1"
+                  {% if form.prevent_negative_envelopes %}checked{% endif %}
+                  class="peer sr-only"
+                >
+                <span class="relative h-7 w-12 rounded-full bg-slate-300 transition duration-200 peer-checked:bg-emerald-500 peer-focus:ring-4 peer-focus:ring-emerald-200 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition after:duration-200 peer-checked:after:translate-x-5"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="pt-4">
+            <h3 class="text-lg font-semibold text-slate-900">Automation</h3>
+            <p class="mt-1 text-sm text-slate-600">
+              Control helper actions for recurring deposits and dashboard funding.
+            </p>
+          </div>
+
+          <div class="relative rounded-3xl border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
+            <div class="group absolute left-4 top-4">
+              <button
+                type="button"
+                tabindex="-1"
+                aria-label="How automatic recurring deposits work"
+                class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-500 shadow-sm"
+              >
+                ?
+              </button>
+              <div class="pointer-events-none absolute left-8 top-0 z-10 hidden w-72 rounded-2xl bg-slate-900 px-3 py-2 text-xs leading-5 text-white shadow-xl group-hover:block">
+                On the first app open of each month, the app creates that month's recurring due amount for every recurring envelope. If available balance exists, it funds as much as it can immediately.
+              </div>
+            </div>
+
+            <div class="flex min-h-[4rem] items-center justify-between gap-4 pl-8">
+              <div class="pr-2">
+                <p class="text-sm font-semibold text-slate-900">
+                  Automatically apply monthly recurring deposits
+                </p>
+                <p class="mt-1 text-xs font-medium uppercase tracking-wide {% if form.auto_recurring_deposits %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                  {% if form.auto_recurring_deposits %}On{% else %}Off{% endif %}
+                </p>
+              </div>
+
+              <label class="inline-flex cursor-pointer items-center">
+                <input
+                  id="auto_recurring_deposits"
+                  name="auto_recurring_deposits"
+                  type="checkbox"
+                  value="1"
+                  {% if form.auto_recurring_deposits %}checked{% endif %}
+                  class="peer sr-only"
+                >
+                <span class="relative h-7 w-12 rounded-full bg-slate-300 transition duration-200 peer-checked:bg-emerald-500 peer-focus:ring-4 peer-focus:ring-emerald-200 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition after:duration-200 peer-checked:after:translate-x-5"></span>
+              </label>
+            </div>
+          </div>
+
+          <div
+            id="auto-retry-setting"
+            class="relative rounded-3xl border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6 {% if not form.auto_recurring_deposits %}hidden{% endif %}"
+          >
+            <div class="group absolute left-4 top-4">
+              <button
+                type="button"
+                tabindex="-1"
+                aria-label="How recurring auto-retry works"
+                class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-500 shadow-sm"
+              >
+                ?
+              </button>
+              <div class="pointer-events-none absolute left-8 top-0 z-10 hidden w-72 rounded-2xl bg-slate-900 px-3 py-2 text-xs leading-5 text-white shadow-xl group-hover:block">
+                If a recurring due amount was created but could not be fully funded, the app checks again on later opens and automatically moves available balance into that envelope until the month's due amount is covered.
+              </div>
+            </div>
+
+            <div class="flex min-h-[4rem] items-center justify-between gap-4 pl-8">
+              <div class="pr-2">
+                <p class="text-sm font-semibold text-slate-900">
+                  Auto-retry recurring deposits when available balance exists
+                </p>
+                <p class="mt-1 text-xs font-medium uppercase tracking-wide {% if form.auto_retry_recurring_deposits %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                  {% if form.auto_retry_recurring_deposits %}On{% else %}Off{% endif %}
+                </p>
+              </div>
+
+              <label class="inline-flex cursor-pointer items-center">
+                <input
+                  id="auto_retry_recurring_deposits"
+                  name="auto_retry_recurring_deposits"
+                  type="checkbox"
+                  value="1"
+                  {% if form.auto_retry_recurring_deposits %}checked{% endif %}
+                  class="peer sr-only"
+                >
+                <span class="relative h-7 w-12 rounded-full bg-slate-300 transition duration-200 peer-checked:bg-emerald-500 peer-focus:ring-4 peer-focus:ring-emerald-200 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition after:duration-200 peer-checked:after:translate-x-5"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="relative rounded-3xl border border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
+            <div class="group absolute left-4 top-4">
+              <button
+                type="button"
+                tabindex="-1"
+                aria-label="How dashboard double-click funding works"
+                class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-500 shadow-sm"
+              >
+                ?
+              </button>
+              <div class="pointer-events-none absolute left-8 top-0 z-10 hidden w-72 rounded-2xl bg-slate-900 px-3 py-2 text-xs leading-5 text-white shadow-xl group-hover:block">
+                When this is on, double-clicking a negative envelope on the Dashboard opens a confirmation popup to move enough available balance into that envelope to bring it back to zero.
+              </div>
+            </div>
+
+            <div class="flex min-h-[4rem] items-center justify-between gap-4 pl-8">
+              <div class="pr-2">
+                <p class="text-sm font-semibold text-slate-900">
+                  Dashboard double-click funding for negative envelopes
+                </p>
+                <p class="mt-1 text-xs font-medium uppercase tracking-wide {% if form.dashboard_double_click_fund_negative %}text-emerald-600{% else %}text-slate-400{% endif %}">
+                  {% if form.dashboard_double_click_fund_negative %}On{% else %}Off{% endif %}
+                </p>
+              </div>
+
+              <label class="inline-flex cursor-pointer items-center">
+                <input
+                  id="dashboard_double_click_fund_negative"
+                  name="dashboard_double_click_fund_negative"
+                  type="checkbox"
+                  value="1"
+                  {% if form.dashboard_double_click_fund_negative %}checked{% endif %}
+                  class="peer sr-only"
+                >
+                <span class="relative h-7 w-12 rounded-full bg-slate-300 transition duration-200 peer-checked:bg-emerald-500 peer-focus:ring-4 peer-focus:ring-emerald-200 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition after:duration-200 peer-checked:after:translate-x-5"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Auto-created recurring dues can temporarily make envelopes show negative until they are funded.
+        </div>
+      </form>
+
+      <div class="flex flex-wrap gap-3 pt-7">
+        <button
+          type="submit"
+          form="settings-form"
+          class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700"
+        >
+          Save Settings
+        </button>
+
+        <a
+          href="{{ url_for('dashboard') }}"
+          class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+        >
+          Back
+        </a>
+      </div>
+    </section>
+
+    {% if config.CAN_CLEAR_DATA %}
+      <section class="mt-6 rounded-3xl border border-rose-200 bg-white p-6 shadow-sm sm:p-8">
+        <div class="flex flex-col gap-4">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-400">
+              Danger Zone
+            </p>
+            <h2 class="mt-2 text-2xl font-semibold text-slate-900">Clear Data</h2>
+            <p class="mt-2 max-w-3xl text-sm text-slate-600">
+              Clear specific parts of the app. Each action asks for confirmation before anything is deleted.
+            </p>
+          </div>
+
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <button
+              type="button"
+              data-clear-action="{{ url_for('clear_data_section', clear_target='transactions') }}"
+              data-clear-title="Clear all transactions?"
+              data-clear-message="This deletes all income and expense transactions. Envelopes, goals, subscriptions, and transfer history stay in place."
+              data-clear-label="Yes, Clear Transactions"
+              class="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+            >
+              Clear Transactions
+            </button>
+            <button
+              type="button"
+              data-clear-action="{{ url_for('clear_data_section', clear_target='envelopes') }}"
+              data-clear-title="Clear all envelopes?"
+              data-clear-message="This deletes all envelopes, removes envelope-related transfers and allocations, and detaches transactions, goals, and subscriptions from envelopes."
+              data-clear-label="Yes, Clear Envelopes"
+              class="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+            >
+              Clear Envelopes
+            </button>
+            <button
+              type="button"
+              data-clear-action="{{ url_for('clear_data_section', clear_target='subscriptions') }}"
+              data-clear-title="Clear all subscriptions?"
+              data-clear-message="This deletes every tracked subscription and leaves the rest of the budget intact."
+              data-clear-label="Yes, Clear Subscriptions"
+              class="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+            >
+              Clear Subscriptions
+            </button>
+            <button
+              type="button"
+              data-clear-action="{{ url_for('clear_data_section', clear_target='goals') }}"
+              data-clear-title="Clear all goals?"
+              data-clear-message="This deletes all goals and goal-related transfers. Envelopes, transactions, and subscriptions stay in place."
+              data-clear-label="Yes, Clear Goals"
+              class="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+            >
+              Clear Goals
+            </button>
+            <button
+              type="button"
+              data-clear-action="{{ url_for('dev_reset') }}"
+              data-clear-title="Clear everything?"
+              data-clear-message="This irreversibly clears all app data, including transactions, envelopes, subscriptions, goals, transfers, and related budgeting history."
+              data-clear-label="Yes, Clear Everything"
+              class="rounded-xl border border-rose-400 bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
+            >
+              Clear Everything
+            </button>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+  </div>
+</div>
+
+{% if config.CAN_CLEAR_DATA %}
+  <div
+    id="clear-data-modal"
+    class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/45 px-4 py-6"
+    aria-hidden="true"
+  >
+    <div
+      id="clear-data-backdrop"
+      class="absolute inset-0"
+    ></div>
+
+    <div class="relative z-10 w-full max-w-lg rounded-3xl border border-rose-200 bg-white p-6 shadow-2xl sm:p-7">
+      <div class="flex items-start gap-4">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-2xl text-rose-600">
+          !
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-400">
+            Confirm Clear Data
+          </p>
+          <h3 id="clear-data-title" class="mt-2 text-xl font-semibold text-slate-900">Are you sure?</h3>
+          <p id="clear-data-message" class="mt-3 text-sm leading-6 text-slate-600"></p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-wrap justify-end gap-3">
+        <button
+          id="cancel-clear-data"
+          type="button"
+          class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+        >
+          Cancel
+        </button>
+
+        <form id="clear-data-form" method="post" action="{{ url_for('dev_reset') }}">
+          <input type="hidden" name="confirm" value="yes">
+          <button
+            id="confirm-clear-data"
+            type="submit"
+            class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
+          >
+            Yes, Clear Everything
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const autoRecurring = document.getElementById("auto_recurring_deposits");
+      const autoRetry = document.getElementById("auto_retry_recurring_deposits");
+      const autoRetrySetting = document.getElementById("auto-retry-setting");
+      const clearDataModal = document.getElementById("clear-data-modal");
+      const openClearDataModalButtons = document.querySelectorAll("[data-clear-action]");
+      const cancelClearDataButton = document.getElementById("cancel-clear-data");
+      const clearDataBackdrop = document.getElementById("clear-data-backdrop");
+      const clearDataForm = document.getElementById("clear-data-form");
+      const clearDataTitle = document.getElementById("clear-data-title");
+      const clearDataMessage = document.getElementById("clear-data-message");
+      const confirmClearDataButton = document.getElementById("confirm-clear-data");
+
+      function syncRetryState() {
+        const enabled = autoRecurring.checked;
+        autoRetrySetting.classList.toggle("hidden", !enabled);
+        autoRetry.disabled = !enabled;
+      }
+
+      function openClearDataModal(button) {
+        if (!clearDataModal) {
+          return;
+        }
+
+        clearDataForm.action = button.dataset.clearAction;
+        clearDataTitle.textContent = button.dataset.clearTitle;
+        clearDataMessage.textContent = button.dataset.clearMessage;
+        confirmClearDataButton.textContent = button.dataset.clearLabel;
+        clearDataModal.classList.remove("hidden");
+        clearDataModal.classList.add("flex");
+        clearDataModal.setAttribute("aria-hidden", "false");
+        document.body.classList.add("overflow-hidden");
+      }
+
+      function closeClearDataModal() {
+        if (!clearDataModal) {
+          return;
+        }
+
+        clearDataModal.classList.add("hidden");
+        clearDataModal.classList.remove("flex");
+        clearDataModal.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("overflow-hidden");
+      }
+
+      syncRetryState();
+      autoRecurring.addEventListener("change", syncRetryState);
+
+      openClearDataModalButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+          openClearDataModal(button);
+        });
+      });
+
+      if (cancelClearDataButton) {
+        cancelClearDataButton.addEventListener("click", closeClearDataModal);
+      }
+
+      if (clearDataBackdrop) {
+        clearDataBackdrop.addEventListener("click", closeClearDataModal);
+      }
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          closeClearDataModal();
+        }
+      });
+    });
+  </script>
+{% endblock %}

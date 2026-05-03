@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="space-y-6">
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="mb-5 text-center md:text-left">
+      <h2 class="text-lg font-semibold text-slate-800">Create Envelope</h2>
+      <p class="mt-2 text-sm text-slate-600">
+        Add a new budgeting category such as Groceries, Rent, Utilities, or Savings.
+      </p>
+    </div>
+
+    <form action="{{ url_for('envelopes_page') }}" method="post" class="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-end">
+      <div class="xl:col-span-5">
+        <label for="name" class="mb-2 block text-sm font-medium text-slate-700">
+          Envelope Name
+        </label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          value="{{ form.name if form else '' }}"
+          placeholder="Example: Groceries"
+          class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500"
+        >
+        <p class="mt-1 text-xs invisible" aria-hidden="true">
+          Spacer text to keep the form row aligned.
+        </p>
+      </div>
+
+      <div class="xl:col-span-5">
+        <label for="recurring_monthly_amount" class="mb-2 block text-sm font-medium text-slate-700">
+          Monthly Recurring Deposit (optional)
+        </label>
+        <input
+          id="recurring_monthly_amount"
+          name="recurring_monthly_amount"
+          type="number"
+          step="0.01"
+          min="0"
+          value="{{ form.recurring_monthly_amount if form else '' }}"
+          placeholder="Example: 50.00"
+          class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500"
+        >
+        <p class="mt-1 text-xs text-slate-500">
+          Leave blank if this envelope does not need a recurring monthly deposit.
+        </p>
+      </div>
+
+      <div class="flex items-end xl:col-span-2 xl:justify-end">
+        <button
+          type="submit"
+          class="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 xl:w-auto"
+        >
+          Save Envelope
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div class="text-center md:text-left">
+        <h2 class="text-xl font-semibold text-slate-800">Active Envelopes</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          Archived envelopes stay attached to old history, but they are hidden from the active budgeting screens.
+        </p>
+      </div>
+      <span class="inline-flex items-center self-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 md:self-auto">
+        {{ envelopes|length }} active
+      </span>
+    </div>
+
+    {% if envelopes %}
+      <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {% for envelope in envelopes %}
+          <div class="flex min-h-[12rem] flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+            <div>
+              <p class="truncate text-lg font-semibold text-slate-900">{{ envelope.name }}</p>
+              <p class="mt-2 text-sm text-slate-500">
+                Created {{ envelope.created_at[:10] if envelope.created_at else "Unknown" }}
+              </p>
+              <p class="mt-4 text-sm font-medium text-slate-600">Monthly Deposit</p>
+              <p class="mt-1 text-2xl font-semibold text-slate-900">
+                {% if envelope.recurring_monthly_amount > 0 %}
+                  {{ envelope.recurring_monthly_amount|currency }}
+                {% else %}
+                  <span class="text-base font-semibold text-slate-400">Off</span>
+                {% endif %}
+              </p>
+            </div>
+
+            <div class="mt-5 flex flex-wrap gap-2">
+              <a
+                href="{{ url_for('edit_envelope', envelope_id=envelope.id) }}"
+                class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+              >
+                Edit
+              </a>
+
+              <form
+                action="{{ url_for('archive_envelope', envelope_id=envelope.id) }}"
+                method="post"
+                class="inline"
+                onsubmit="return confirm('Archive this envelope? It will stay in history but disappear from the active budgeting screens.');"
+              >
+                <button
+                  type="submit"
+                  class="cursor-pointer rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-700 transition hover:bg-amber-50"
+                >
+                  Archive
+                </button>
+              </form>
+
+              <form
+                action="{{ url_for('delete_envelope', envelope_id=envelope.id) }}"
+                method="post"
+                class="inline"
+                onsubmit="return confirm('Are you sure you want to delete this envelope?');"
+              >
+                <button
+                  type="submit"
+                  class="cursor-pointer rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                >
+                  Delete
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+        <p class="text-sm text-slate-600">No envelopes have been created yet.</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Add your first envelope using the form above.
+        </p>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if archived_envelopes %}
+    <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div class="text-center md:text-left">
+          <h2 class="text-xl font-semibold text-slate-800">Archived Envelopes</h2>
+          <p class="mt-1 text-sm text-slate-600">
+            These stay in historical reports, but they no longer appear in the day-to-day budgeting workflow.
+          </p>
+        </div>
+        <span class="inline-flex items-center self-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 md:self-auto">
+          {{ archived_envelopes|length }} archived
+        </span>
+      </div>
+
+      <div class="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Name
+                </th>
+                <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Created At
+                </th>
+                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Monthly Deposit
+                </th>
+                <th class="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 bg-white">
+              {% for envelope in archived_envelopes %}
+                <tr class="transition hover:bg-slate-50">
+                  <td class="px-5 py-4 text-base font-semibold text-slate-800">
+                    {{ envelope.name }}
+                  </td>
+                  <td class="px-5 py-4 text-sm text-slate-600">
+                    {{ envelope.created_at[:10] if envelope.created_at else "" }}
+                  </td>
+                  <td class="px-5 py-4 text-right text-sm text-slate-700">
+                    {% if envelope.recurring_monthly_amount > 0 %}
+                      {{ envelope.recurring_monthly_amount|currency }}
+                    {% else %}
+                      <span class="text-slate-400">Off</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-5 py-4 text-right">
+                    <div class="inline-flex flex-wrap items-center justify-end gap-2">
+                      <form
+                        action="{{ url_for('restore_envelope', envelope_id=envelope.id) }}"
+                        method="post"
+                        class="inline"
+                      >
+                        <button
+                          type="submit"
+                          class="cursor-pointer rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                        >
+                          Restore
+                        </button>
+                      </form>
+
+                      <a
+                        href="{{ url_for('edit_envelope', envelope_id=envelope.id) }}"
+                        class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                      >
+                        Edit
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

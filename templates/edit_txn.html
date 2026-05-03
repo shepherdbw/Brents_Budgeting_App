@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set field_classes = "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition duration-150 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" %}
+<div class="rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-md shadow-slate-300/40">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h2 class="text-base font-semibold">Edit Transaction</h2>
+      <p class="mt-1 text-sm text-slate-600">
+        Update the fields below and save changes.
+      </p>
+    </div>
+    <a
+      href="{{ url_for('transaction_history') }}"
+      class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+    >
+      Back
+    </a>
+  </div>
+
+  <form method="post" class="mt-5 grid gap-4 md:grid-cols-2">
+    <div>
+      <label class="text-sm font-medium text-slate-700">Date</label>
+      <input
+        name="date"
+        type="date"
+        required
+        value="{{ form.date }}"
+        class="{{ field_classes }}"
+      />
+    </div>
+
+    <div>
+      <label class="text-sm font-medium text-slate-700">Type</label>
+      <select id="transaction_type" name="type" class="{{ field_classes }}">
+        <option value="EXPENSE" {% if form.type == "EXPENSE" %}selected{% endif %}>
+          Expense
+        </option>
+        <option value="INCOME" {% if form.type == "INCOME" %}selected{% endif %}>
+          Income
+        </option>
+      </select>
+    </div>
+
+    <div>
+      <label class="text-sm font-medium text-slate-700">Amount (positive)</label>
+      <input
+        name="amount"
+        type="number"
+        step="0.01"
+        min="0.01"
+        required
+        value="{{ form.amount }}"
+        class="{{ field_classes }}"
+      />
+    </div>
+
+    <div>
+      <label class="text-sm font-medium text-slate-700">Payee</label>
+      <input
+        name="payee"
+        type="text"
+        required
+        value="{{ form.payee }}"
+        class="{{ field_classes }}"
+      />
+    </div>
+
+    <div id="envelope-field" class="md:col-span-2">
+      <label class="text-sm font-medium text-slate-700">
+        Envelope (required for Expense)
+      </label>
+      <select id="envelope_id" name="envelope_id" class="{{ field_classes }}">
+        <option value="" {% if not form.envelope_id %}selected{% endif %}>(None)</option>
+        {% for env in envelopes %}
+          <option value="{{ env.id }}" {% if form.envelope_id == (env.id|string) %}selected{% endif %}>
+            {{ env.name }}{% if not env.active %} (Archived){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="md:col-span-2">
+      <label class="text-sm font-medium text-slate-700">Note (optional)</label>
+      <textarea name="note" rows="3" class="{{ field_classes }}">{{ form.note }}</textarea>
+    </div>
+
+    <div class="md:col-span-2 flex gap-2">
+      <button
+        type="submit"
+        class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-emerald-700 active:scale-[0.98]"
+      >
+        Save Changes
+      </button>
+      <a
+        href="{{ url_for('transaction_history') }}"
+        class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+      >
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const typeSelect = document.getElementById("transaction_type");
+      const envelopeField = document.getElementById("envelope-field");
+      const envelopeSelect = document.getElementById("envelope_id");
+
+      function syncEnvelopeField() {
+        const isIncome = typeSelect.value === "INCOME";
+        envelopeField.classList.toggle("hidden", isIncome);
+        envelopeSelect.disabled = isIncome;
+        if (isIncome) {
+          envelopeSelect.value = "";
+        }
+      }
+
+      syncEnvelopeField();
+      typeSelect.addEventListener("change", syncEnvelopeField);
+    });
+  </script>
+{% endblock %}

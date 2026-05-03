@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set field_classes = "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition duration-150 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" %}
+<div class="space-y-6">
+  <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-md shadow-slate-300/40 transition-shadow duration-150 hover:shadow-md">
+    <h2 class="text-base font-semibold">Add Expense / Income</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Enter a transaction manually, or import a bank statement CSV below.
+    </p>
+
+    <form method="post" class="mt-5 grid gap-4 md:grid-cols-2">
+      <div>
+        <label class="text-sm font-medium text-slate-700">Date</label>
+        <input
+          name="date"
+          type="date"
+          required
+          value="{{ form.date|default('', true) }}"
+          class="{{ field_classes }}"
+        />
+      </div>
+
+      <div>
+        <label class="text-sm font-medium text-slate-700">Type</label>
+        <select id="transaction_type" name="type" class="{{ field_classes }}">
+          <option value="EXPENSE" {% if form.type == 'EXPENSE' %}selected{% endif %}>
+            Expense
+          </option>
+          <option value="INCOME" {% if form.type == 'INCOME' %}selected{% endif %}>
+            Income
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-sm font-medium text-slate-700">Amount (positive)</label>
+        <input
+          name="amount"
+          type="number"
+          step="0.01"
+          min="0.01"
+          required
+          value="{{ form.amount|default('', true) }}"
+          placeholder="10.99"
+          class="{{ field_classes }}"
+        />
+      </div>
+
+      <div>
+        <label class="text-sm font-medium text-slate-700">Payee</label>
+        <input
+          name="payee"
+          type="text"
+          maxlength="100"
+          required
+          value="{{ form.payee|default('', true) }}"
+          placeholder="Walmart, Paycheck, etc."
+          class="{{ field_classes }}"
+        />
+      </div>
+
+      <div id="envelope-field" class="md:col-span-2">
+        <label class="text-sm font-medium text-slate-700">
+          Envelope (required for Expense)
+        </label>
+        <select id="envelope_id" name="envelope_id" class="{{ field_classes }}">
+          <option value="">(None)</option>
+          {% for env in envelopes %}
+            <option value="{{ env.id }}" {% if form.envelope_id == (env.id|string) %}selected{% endif %}>
+              {{ env.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="text-sm font-medium text-slate-700">Note (optional)</label>
+        <textarea
+          name="note"
+          maxlength="250"
+          rows="3"
+          placeholder="Optional note..."
+          class="{{ field_classes }}"
+        >{{ form.note|default('', true) }}</textarea>
+      </div>
+
+      <div class="md:col-span-2 flex flex-wrap gap-2">
+        <button
+          type="submit"
+          class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-emerald-700 active:scale-[0.98]"
+        >
+          Save Transaction
+        </button>
+        <a
+          href="{{ url_for('transaction_history') }}"
+          class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98]"
+        >
+          View History
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div>
+        <h2 class="text-base font-semibold text-slate-900">Import Bank CSV</h2>
+        <p class="mt-2 max-w-3xl text-sm text-slate-600">
+          Upload a statement export such as the SoFi format you shared. Positive amounts are imported as income, and negative amounts are imported as expenses without an envelope so your budget balances do not get distorted before review.
+        </p>
+      </div>
+
+      <div class="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 ring-1 ring-slate-200">
+        Preview before import
+      </div>
+    </div>
+
+    <form
+      method="post"
+      action="{{ url_for('preview_transaction_import') }}"
+      enctype="multipart/form-data"
+      class="mt-5 grid gap-4 md:grid-cols-[1fr,auto]"
+    >
+      <div>
+        <label class="text-sm font-medium text-slate-700">CSV File</label>
+        <input
+          name="csv_file"
+          type="file"
+          accept=".csv,text/csv"
+          required
+          class="{{ field_classes }}"
+        />
+        <p class="mt-1 text-xs text-slate-500">
+          Currently tuned for SoFi exports and generic statement CSVs with Date, Description/Payee, and Amount columns.
+        </p>
+      </div>
+
+      <div class="self-end">
+        <button
+          type="submit"
+          class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-slate-800 active:scale-[0.98]"
+        >
+          Preview Import
+        </button>
+      </div>
+    </form>
+
+    {% if import_preview %}
+      <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900">Import Preview</h3>
+            <p class="mt-1 text-sm text-slate-600">
+              {{ import_preview.source_filename }} - {{ import_preview.profile_name }}
+            </p>
+            <p class="mt-2 text-xs uppercase tracking-wide text-slate-400">
+              Generated {{ import_preview.created_at }}
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <span class="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200">
+              {{ import_preview.summary.total_rows|number }} rows
+            </span>
+            <span class="rounded-full bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200">
+              {{ import_preview.summary.ready_count|number }} ready
+            </span>
+            <span class="rounded-full bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 ring-1 ring-amber-200">
+              {{ import_preview.summary.duplicate_count|number }} duplicates
+            </span>
+            <span class="rounded-full bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-200">
+              {{ import_preview.summary.skipped_count|number }} skipped
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Income Ready</p>
+            <p class="mt-2 text-xl font-semibold text-emerald-700">
+              {{ import_preview.summary.income_total|currency }}
+            </p>
+            <p class="mt-1 text-sm text-slate-500">
+              {{ import_preview.summary.income_count|number }} row{{ '' if import_preview.summary.income_count == 1 else 's' }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Expense Ready</p>
+            <p class="mt-2 text-xl font-semibold text-rose-700">
+              {{ import_preview.summary.expense_total|currency }}
+            </p>
+            <p class="mt-1 text-sm text-slate-500">
+              {{ import_preview.summary.expense_count|number }} row{{ '' if import_preview.summary.expense_count == 1 else 's' }}
+            </p>
+          </div>
+
+          <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 md:col-span-2">
+            <p class="text-sm font-semibold text-amber-900">Import behavior</p>
+            <p class="mt-2 text-sm leading-6 text-amber-900">
+              Imported expense rows will be saved without an envelope so they appear in history and stats but do not change envelope balances until you review them.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap gap-3">
+          <form method="post" action="{{ url_for('commit_transaction_import') }}">
+            <input type="hidden" name="preview_token" value="{{ import_preview.token }}">
+            <button
+              type="submit"
+              class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition duration-150 hover:bg-emerald-700 active:scale-[0.98]"
+              {% if import_preview.summary.ready_count == 0 %}disabled{% endif %}
+            >
+              Import {{ import_preview.summary.ready_count|number }} Ready Row{{ '' if import_preview.summary.ready_count == 1 else 's' }}
+            </button>
+          </form>
+
+          <form method="post" action="{{ url_for('cancel_transaction_import') }}">
+            <input type="hidden" name="preview_token" value="{{ import_preview.token }}">
+            <button
+              type="submit"
+              class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98]"
+            >
+              Dismiss Preview
+            </button>
+          </form>
+        </div>
+
+        <div class="mt-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <table class="min-w-full table-auto text-sm">
+            <thead class="bg-slate-50 text-left text-slate-500">
+              <tr class="border-b border-slate-200">
+                <th class="px-4 py-3">Date</th>
+                <th class="px-4 py-3">Description</th>
+                <th class="px-4 py-3">Bank Type</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">App Type</th>
+                <th class="px-4 py-3 text-right">Amount</th>
+                <th class="px-4 py-3">Import Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in import_preview.rows %}
+                <tr class="border-b border-slate-100 odd:bg-white even:bg-slate-50/60">
+                  <td class="whitespace-nowrap px-4 py-3 text-slate-700">
+                    {{ row.date }}
+                    {% if row.time %}
+                      <div class="mt-1 text-xs text-slate-400">{{ row.time }}</div>
+                    {% endif %}
+                  </td>
+                  <td class="min-w-[220px] px-4 py-3 text-slate-800">
+                    {{ row.payee or "(Blank)" }}
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3 text-slate-600">
+                    {{ row.raw_type or "-" }}
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3 text-slate-600">
+                    {{ row.status or "-" }}
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3">
+                    {% if row.transaction_type %}
+                      <span class="rounded-full px-2 py-1 text-xs font-semibold {% if row.transaction_type == 'INCOME' %}bg-emerald-50 text-emerald-700{% else %}bg-rose-50 text-rose-700{% endif %}">
+                        {{ row.transaction_type }}
+                      </span>
+                    {% else %}
+                      <span class="text-slate-400">-</span>
+                    {% endif %}
+                  </td>
+                  <td class="whitespace-nowrap px-4 py-3 text-right font-medium {% if row.transaction_type == 'INCOME' %}text-emerald-600{% elif row.transaction_type == 'EXPENSE' %}text-rose-600{% else %}text-slate-500{% endif %}">
+                    {% if row.amount is not none %}
+                      {{ row.amount|currency }}
+                    {% else %}
+                      {{ row.amount_display or "-" }}
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if row.can_import %}
+                      <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                        Ready
+                      </span>
+                    {% elif row.is_existing_duplicate or row.is_file_duplicate %}
+                      <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+                        Duplicate
+                      </span>
+                    {% else %}
+                      <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
+                        Skipped
+                      </span>
+                    {% endif %}
+
+                    {% if row.skip_reason %}
+                      <p class="mt-2 text-xs leading-5 text-rose-700">{{ row.skip_reason }}</p>
+                    {% elif row.is_existing_duplicate %}
+                      <p class="mt-2 text-xs leading-5 text-amber-800">
+                        Already exists in your transaction history.
+                      </p>
+                    {% elif row.is_file_duplicate %}
+                      <p class="mt-2 text-xs leading-5 text-amber-800">
+                        Duplicate of another row in this upload.
+                      </p>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const typeSelect = document.getElementById("transaction_type");
+      const envelopeField = document.getElementById("envelope-field");
+      const envelopeSelect = document.getElementById("envelope_id");
+
+      function syncEnvelopeField() {
+        const isIncome = typeSelect.value === "INCOME";
+        envelopeField.classList.toggle("hidden", isIncome);
+        envelopeSelect.disabled = isIncome;
+        if (isIncome) {
+          envelopeSelect.value = "";
+        }
+      }
+
+      syncEnvelopeField();
+      typeSelect.addEventListener("change", syncEnvelopeField);
+    });
+  </script>
+{% endblock %}

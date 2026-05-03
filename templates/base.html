@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ page_title or "Budget App" }}</title>
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/tailwind.css') }}"
+  >
+  {% block head %}{% endblock %}
+  <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 text-slate-900">
+  <header class="sticky top-0 z-20 border-b border-slate-700 bg-slate-800 shadow-md shadow-slate-900/30">
+    <div class="mx-auto max-w-[92rem] px-4 py-4">
+      <div class="flex flex-col items-center gap-3">
+        <div class="relative grid w-full grid-cols-[1fr,auto,1fr] items-center gap-3">
+          <div></div>
+          <div class="text-center text-lg font-semibold tracking-tight text-white">
+            Brent's Budgeting App
+          </div>
+
+          {% if config.CAN_CLOSE_APP %}
+            <button
+              id="open-close-app-modal"
+              type="button"
+              class="justify-self-end rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100"
+            >
+              Shut Down
+            </button>
+          {% else %}
+            <div></div>
+          {% endif %}
+        </div>
+
+        <nav class="flex flex-wrap justify-center gap-2 text-sm">
+          {% for item in nav_items %}
+            <a
+              href="{{ url_for(item.endpoint) }}"
+              class="rounded-lg px-3 py-2 transition duration-150 ease-out active:scale-[0.98] {% if nav == item.key %}bg-slate-800 text-white relative after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-0.5 after:w-6 after:rounded-full after:bg-emerald-400{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %}"
+            >
+              {{ item.label }}
+            </a>
+          {% endfor %}
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto {% if nav == 'stats' %}max-w-[76rem]{% elif nav == 'allocate' or nav == 'envelopes' or nav == 'subscriptions' %}max-w-[92rem]{% else %}max-w-6xl{% endif %} px-4 py-8">
+    <div class="mb-6">
+      <h1 class="text-2xl font-semibold tracking-tight">{{ page_title }}</h1>
+      <div class="mt-3 h-1 w-16 rounded-full bg-emerald-500/70"></div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-6 grid gap-2">
+          {% for category, message in messages %}
+            <div class="rounded-xl border px-4 py-3 text-sm {% if category == 'success' %}border-emerald-200 bg-emerald-50 text-emerald-800{% else %}border-rose-200 bg-rose-50 text-rose-800{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if config.CAN_CLOSE_APP %}
+    <div
+      id="close-app-modal"
+      class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/45 px-4 py-6"
+      aria-hidden="true"
+      data-close-endpoint="{{ url_for('close_app') }}"
+    >
+      <div id="close-app-backdrop" class="absolute inset-0"></div>
+
+      <div class="relative z-10 w-full max-w-lg rounded-3xl border border-rose-200 bg-white p-6 shadow-2xl sm:p-7">
+        <div class="flex items-start gap-4">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-2xl text-rose-600">
+            !
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-400">
+              Confirm Shut Down
+            </p>
+            <h3 id="close-app-modal-title" class="mt-2 text-xl font-semibold text-slate-900">Shut Down App?</h3>
+            <p id="close-app-modal-message" class="mt-3 text-sm leading-6 text-slate-600">
+              Are you sure you want to shut down the app? All data will be saved first.
+            </p>
+            <p id="close-app-modal-status" class="mt-3 hidden text-sm text-slate-500"></p>
+          </div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap justify-end gap-3">
+          <button
+            id="cancel-close-app"
+            type="button"
+            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+
+          <button
+            id="confirm-close-app"
+            type="button"
+            class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
+          >
+            Shut Down
+          </button>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% block scripts %}{% endblock %}
+
+  {% if config.CAN_CLOSE_APP %}
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const closeAppModal = document.getElementById("close-app-modal");
+        const openCloseAppButton = document.getElementById("open-close-app-modal");
+        const closeAppBackdrop = document.getElementById("close-app-backdrop");
+        const cancelCloseAppButton = document.getElementById("cancel-close-app");
+        const confirmCloseAppButton = document.getElementById("confirm-close-app");
+        const closeAppModalTitle = document.getElementById("close-app-modal-title");
+        const closeAppModalMessage = document.getElementById("close-app-modal-message");
+        const closeAppModalStatus = document.getElementById("close-app-modal-status");
+
+        function openCloseAppModal() {
+          closeAppModal.classList.remove("hidden");
+          closeAppModal.classList.add("flex");
+          closeAppModal.setAttribute("aria-hidden", "false");
+          document.body.classList.add("overflow-hidden");
+        }
+
+        function closeCloseAppModal() {
+          closeAppModal.classList.add("hidden");
+          closeAppModal.classList.remove("flex");
+          closeAppModal.setAttribute("aria-hidden", "true");
+          document.body.classList.remove("overflow-hidden");
+        }
+
+        async function confirmCloseApp() {
+          const endpoint = closeAppModal.dataset.closeEndpoint;
+
+          confirmCloseAppButton.disabled = true;
+          cancelCloseAppButton.disabled = true;
+          closeAppModalStatus.classList.add("hidden");
+
+          try {
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+              },
+              body: "confirm=yes",
+            });
+
+            if (!response.ok) {
+              throw new Error("Unable to close the app right now.");
+            }
+
+            closeAppModalTitle.textContent = "Shutting Down";
+            closeAppModalMessage.textContent = "Shutting down Brent's Budgeting App. All data has been saved.";
+            closeAppModalStatus.textContent = "You can close this browser tab if it does not close automatically.";
+            closeAppModalStatus.classList.remove("hidden");
+            confirmCloseAppButton.classList.add("hidden");
+            cancelCloseAppButton.textContent = "Close";
+            cancelCloseAppButton.disabled = false;
+
+            setTimeout(function () {
+              window.open("", "_self");
+              window.close();
+            }, 300);
+
+            setTimeout(function () {
+              if (!window.closed) {
+                window.location.replace("about:blank");
+              }
+            }, 900);
+          } catch (error) {
+            closeAppModalStatus.textContent = error.message;
+            closeAppModalStatus.classList.remove("hidden");
+            confirmCloseAppButton.disabled = false;
+            cancelCloseAppButton.disabled = false;
+          }
+        }
+
+        openCloseAppButton.addEventListener("click", openCloseAppModal);
+        cancelCloseAppButton.addEventListener("click", closeCloseAppModal);
+        closeAppBackdrop.addEventListener("click", closeCloseAppModal);
+        confirmCloseAppButton.addEventListener("click", confirmCloseApp);
+
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") {
+            closeCloseAppModal();
+          }
+        });
+      });
+    </script>
+  {% endif %}
+</body>
+</html>

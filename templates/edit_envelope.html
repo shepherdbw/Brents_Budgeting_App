@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set field_classes = "w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500" %}
+<div class="max-w-2xl">
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h2 class="text-lg font-semibold text-slate-800">Edit Envelope</h2>
+    <p class="mt-2 text-sm text-slate-600">
+      Update the name and optional recurring monthly deposit for this budgeting category.
+    </p>
+
+    <form
+      action="{{ url_for('edit_envelope', envelope_id=envelope.id) }}"
+      method="post"
+      class="mt-6 space-y-4"
+    >
+      <div>
+        <label for="name" class="mb-2 block text-sm font-medium text-slate-700">
+          Envelope Name
+        </label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          value="{{ form.name }}"
+          class="{{ field_classes }}"
+        >
+      </div>
+
+      <div>
+        <label for="recurring_monthly_amount" class="mb-2 block text-sm font-medium text-slate-700">
+          Monthly Recurring Deposit (optional)
+        </label>
+        <input
+          id="recurring_monthly_amount"
+          name="recurring_monthly_amount"
+          type="number"
+          step="0.01"
+          min="0"
+          value="{{ form.recurring_monthly_amount }}"
+          placeholder="Example: 50.00"
+          class="{{ field_classes }}"
+        >
+        <p class="mt-1 text-xs text-slate-500">
+          Leave blank to turn recurring monthly deposits off for this envelope.
+        </p>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button
+          type="submit"
+          class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700"
+        >
+          Save Changes
+        </button>
+
+        <a
+          href="{{ url_for('envelopes_page') }}"
+          class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+        >
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

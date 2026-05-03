@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set field_classes = "mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition duration-150 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" %}
+<div class="space-y-6">
+  <details class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" {% if form.name or form.target_amount or form.target_date %}open{% endif %}>
+    <summary class="inline-flex cursor-pointer list-none items-center rounded-xl bg-emerald-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+      Add a Goal
+    </summary>
+
+    <div class="mt-6">
+      <div class="mb-5">
+        <h2 class="text-xl font-semibold text-slate-800">Create Goal</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          Set a target amount, due date, and schedule to generate a savings pace automatically.
+        </p>
+      </div>
+
+      <form action="{{ url_for('goals_planning') }}" method="post" class="grid gap-4 xl:grid-cols-[1.4fr,1fr,1fr,1fr,auto] xl:items-end">
+        <div>
+          <label for="name" class="text-sm font-medium text-slate-700">Goal Name</label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            value="{{ form.name }}"
+            placeholder="Example: Emergency Fund"
+            class="{{ field_classes }}"
+          >
+        </div>
+
+        <div>
+          <label for="target_amount" class="text-sm font-medium text-slate-700">Target Amount</label>
+          <input
+            id="target_amount"
+            name="target_amount"
+            type="number"
+            step="0.01"
+            min="0.01"
+            value="{{ form.target_amount }}"
+            placeholder="1000.00"
+            class="{{ field_classes }}"
+          >
+        </div>
+
+        <div>
+          <label for="target_date" class="text-sm font-medium text-slate-700">Target Date</label>
+          <input
+            id="target_date"
+            name="target_date"
+            type="date"
+            value="{{ form.target_date }}"
+            class="{{ field_classes }}"
+          >
+        </div>
+
+        <div>
+          <label for="contribution_frequency" class="text-sm font-medium text-slate-700">
+            Contribution Schedule
+          </label>
+          <select
+            id="contribution_frequency"
+            name="contribution_frequency"
+            class="{{ field_classes }}"
+          >
+            {% for value, label in goal_frequency_options %}
+              <option value="{{ value }}" {% if form.contribution_frequency == value %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          class="rounded-xl bg-emerald-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+        >
+          Save Goal
+        </button>
+      </form>
+    </div>
+  </details>
+
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div>
+      <div>
+        <h2 class="text-xl font-semibold text-slate-800">Goal Snapshot</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          View each goal's current pace and quickly fund the recommended amount for this period.
+        </p>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        {% if active_goal_rows %}
+          <span class="inline-flex min-h-12 shrink-0 items-center justify-center self-center rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
+            {{ active_goal_rows|length|number }} active
+          </span>
+        {% endif %}
+        <span class="inline-flex min-h-12 items-center justify-center rounded-full bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700">
+          Available {{ available_balance|currency }}
+        </span>
+        {% if recommended_goal_count > 0 %}
+          <span class="inline-flex min-h-12 items-center justify-center rounded-full bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
+            {{ recommended_goal_count|number }} due this period
+          </span>
+          <form action="{{ url_for('fund_all_recommended_goals') }}" method="post">
+            <button
+              type="submit"
+              {% if not can_fund_all_recommended %}disabled{% endif %}
+              class="inline-flex min-h-12 items-center justify-center rounded-full px-4 py-2 text-sm font-medium shadow-sm transition {% if can_fund_all_recommended %}bg-emerald-600 text-white hover:bg-emerald-700{% else %}cursor-not-allowed bg-slate-200 text-slate-500{% endif %}"
+              {% if not can_fund_all_recommended %}title="You need {{ recommended_goal_total|currency }} available to fund all recommendations."{% endif %}
+            >
+              Fund All Recommended
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if recommended_goal_count > 0 %}
+      <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <p class="text-sm text-slate-600">
+          Recommended this period: <span class="font-semibold text-slate-800">{{ recommended_goal_total|currency }}</span>
+          across <span class="font-semibold text-slate-800">{{ recommended_goal_count|number }}</span> goal{{ "" if recommended_goal_count == 1 else "s" }}.
+        </p>
+      </div>
+    {% endif %}
+
+    {% if active_goal_rows %}
+      <div class="mt-5 space-y-5">
+        {% for row in active_goal_rows %}
+          {% set can_fund_row = available_balance + 0.01 >= row.current_period_remaining_amount %}
+          {% set needs_funding = row.current_period_remaining_amount > 0 %}
+          <article class="rounded-2xl border border-slate-200 bg-slate-50 px-6 pt-5 pb-6 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div class="min-w-0">
+                <h3 class="truncate text-xl font-semibold text-slate-800">{{ row.name }}</h3>
+                <p class="mt-2 text-sm text-slate-600">
+                  Due {{ row.target_date }} - {{ row.timeline_text }}
+                </p>
+                <p class="mt-3 text-sm font-medium text-slate-700">
+                  Need {{ row.contribution_amount|currency }} / {{ row.contribution_frequency_label|lower }}
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <a
+                  href="{{ url_for('goal_detail', goal_id=row.id) }}"
+                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                >
+                  View Details
+                </a>
+                {% if needs_funding %}
+                  <form action="{{ url_for('fund_recommended_goal', goal_id=row.id) }}" method="post">
+                    <button
+                      type="submit"
+                      {% if not can_fund_row %}disabled{% endif %}
+                      class="rounded-lg px-3 py-1.5 text-sm font-medium transition {% if can_fund_row %}border border-emerald-300 text-emerald-700 hover:bg-emerald-50{% else %}cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400{% endif %}"
+                      {% if not can_fund_row %}title="You need {{ row.current_period_remaining_amount|currency }} available to fund this recommendation."{% endif %}
+                    >
+                      Fund {{ row.current_period_remaining_amount|currency }}
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                    This period funded
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="mt-6">
+              <div class="relative pt-16">
+                {% if row.progress_percent <= 8 %}
+                  {% set saved_label_style = "left: 0; transform: translateX(0);" %}
+                {% elif row.progress_percent >= 92 %}
+                  {% set saved_label_style = "left: 100%; transform: translateX(-100%);" %}
+                {% else %}
+                  {% set saved_label_style = "left: " ~ row.progress_percent ~ "%; transform: translateX(-50%);" %}
+                {% endif %}
+
+                <div
+                  class="absolute top-8 z-10 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200"
+                  style="{{ saved_label_style }}"
+                >
+                  {{ row.funded|currency }}
+                </div>
+
+                <div class="absolute top-0 right-0 rounded-full px-3 py-1 text-xs font-semibold ring-1 {% if row.progress_percent >= 100 %}bg-emerald-50 text-emerald-700 ring-emerald-200 line-through{% else %}bg-slate-100 text-slate-700 ring-slate-200{% endif %}">
+                  Goal {{ row.target_amount|currency }}
+                </div>
+
+                <div
+                  class="h-4 overflow-hidden rounded-full bg-slate-200 {% if row.behind_schedule %}cursor-help{% endif %}"
+                  {% if row.behind_schedule %}title="{{ row.progress_tooltip }}"{% endif %}
+                >
+                  <div
+                    class="h-full rounded-full transition-all {% if row.behind_schedule %}bg-rose-500{% else %}bg-emerald-500{% endif %}"
+                    style="width: {{ row.progress_percent }}%;"
+                    {% if row.behind_schedule %}title="{{ row.progress_tooltip }}"{% endif %}
+                  ></div>
+                </div>
+              </div>
+
+              <div class="mt-3 flex items-center justify-between text-sm">
+                <span class="font-medium text-slate-600">
+                  Remaining ({{ row.current_period_label }}): {{ row.current_period_remaining_amount|currency }}
+                </span>
+                <span class="font-semibold text-slate-700">
+                  {{ "%.0f"|format(row.progress_percent) }}%
+                </span>
+              </div>
+
+              {% if needs_funding and not can_fund_row %}
+                <p class="mt-3 text-sm text-amber-700">
+                  This recommendation needs {{ row.current_period_remaining_amount|currency }} available before it can be funded.
+                </p>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+        <p class="text-sm text-slate-600">No active goals exist yet.</p>
+        <p class="mt-1 text-sm text-slate-500">
+          Use the form above to create your first savings target.
+        </p>
+      </div>
+    {% endif %}
+  </section>
+
+  {% if archived_goal_rows %}
+    <details class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <summary class="cursor-pointer list-none text-lg font-semibold text-slate-800">
+        Archived Goals
+      </summary>
+
+      <div class="mt-4 overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Goal
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Funded
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Target
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 bg-white">
+            {% for row in archived_goal_rows %}
+              <tr class="transition hover:bg-slate-50">
+                <td class="px-4 py-3 text-sm font-medium text-slate-800">{{ row.name }}</td>
+                <td class="px-4 py-3 text-right text-sm text-slate-700">
+                  {{ row.funded|currency }}
+                </td>
+                <td class="px-4 py-3 text-right text-sm text-slate-700">
+                  {{ row.target_amount|currency }}
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-2">
+                    <a
+                      href="{{ url_for('goal_detail', goal_id=row.id) }}"
+                      class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    >
+                      View
+                    </a>
+                    <form action="{{ url_for('restore_goal', goal_id=row.id) }}" method="post">
+                      <button
+                        type="submit"
+                        class="rounded-lg border border-emerald-300 px-3 py-1.5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50"
+                      >
+                        Restore
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  {% endif %}
+</div>
+{% endblock %}
